@@ -1,0 +1,204 @@
+@import "../../common.scss";
+
+.g-lesson {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:#F8F9FF;
+
+  .m-hd {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background:#fff;
+    padding: 20rpx 32rpx;
+    height: 90rpx;
+    min-height: 90rpx;
+    box-sizing: border-box;
+
+    &>.m-tl {
+      flex: 1;
+      text-align: center;
+    }
+
+    .m-icon-user {
+      background: #508CFF;
+      padding: 10rpx;
+      border-radius: 30rpx;
+    }
+
+    .m-return {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+  }
+
+  .m-bd {
+    flex: 1;
+    padding: 20rpx 32rpx;
+
+    .f-tl {
+      margin: 20rpx 10rpx;
+    }
+
+    &>.m-count {
+      margin-bottom: 10rpx;
+      font-size: 24rpx;
+      color: #999;
+      text {
+        color: $MAIN_COLOR;
+      }
+    }
+
+    .m-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;;
+      text-align: center;
+
+      &>.m-none {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin-top: 100rpx;
+    
+
+        &>text {
+          font-size: 24rpx;
+          color: #999;
+        }
+
+        &>image {
+          width: 250rpx;
+          height: 200rpx;
+        }
+      }
+    }
+  }
+
+
+  .g-conn {
+    position:fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom:0;
+    z-index: 100;
+    background:rgba(0,0,0,.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 80rpx;
+
+    .m-wrap {
+      width: 100%;
+      background:#fff;
+      border-radius: 10rpx;
+
+      image {
+        width: 100%;
+      }
+
+      .m-info {
+        display: flex;
+        flex-direction: column;
+        padding: 20rpx 30rpx;
+
+        .m-cls {
+          text-align: center;
+          padding: 10rpx;
+        }
+
+        
+      }
+
+      .m-fun {
+        display: flex;
+        height: 90rpx;
+        margin: 0 20rpx;
+        border-top: 1rpx solid #eee;
+        padding: 20rpx 0;
+        box-sizing: border-box;
+
+        .m-btn {
+          flex: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+
+          &+.m-btn {
+            border-left: 1px solid #eee;
+          }
+        }
+      }
+    }
+  }
+
+
+  .g-user {
+    display: flex;
+    flex-direction: column;
+
+    .m-user {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200rpx;
+      background:#fff;
+      padding: 40rpx 52rpx;
+      box-sizing: border-box;
+      margin-bottom: 27rpx;
+
+      &>Image {
+        height: 120rpx;
+        width: 120rpx;
+      }
+
+      &>text {
+        margin-left: 32rpx;
+        flex: 1;
+      }
+    }
+
+    .m-sect {
+      display: flex;
+      flex-direction: column;
+
+      &+.m-sect {
+        margin-top: 27rpx;
+      }
+
+      .m-row {
+        display: flex;
+        justify-content: center;
+        background:#fff;
+        align-items: center;
+        box-sizing: border-box;
+        padding: 32rpx;
+        height: 100rpx;
+
+        &+.m-row {
+          margin-top: 2rpx;
+        }
+
+        text {
+          flex: 1;
+        }
+
+        image {
+          padding: 10rpx 20rpx;
+        }
+
+      }
+
+      
+    }
+
+    
+  }
+}
