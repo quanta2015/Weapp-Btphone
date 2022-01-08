@@ -14,14 +14,25 @@
   bottom:0;
   height: 100vh;
   z-index: 9999;
-  background: rgba(255,255,255,1);
+  background: transparent;
   display: flex;
   justify-content: center;
   align-items:center;
 
   &>image {
-    width: 32Px;
-    height: 32Px;
+    width: 64Px;
+    height: 64Px;
+    background: rgba(0,0,0,.9);
+    padding: 10rpx;
+    border-radius: 20rpx;
+  }
+}
+
+
+.g-loading-init {
+  background: #fff;
+  &>image {
+    background: #fff;
   }
 }
 

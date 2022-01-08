@@ -1,9 +1,7 @@
+import Taro from '@tarojs/taro'
 import { Component } from 'react'
 import { View, Button, Text, Input, Image,Picker } from '@tarojs/components'
 import { observer, inject } from 'mobx-react'
-import dayjs from 'dayjs'
-import Taro from '@tarojs/taro'
-
 import { AtMessage } from 'taro-ui'
 
 
@@ -11,71 +9,105 @@ import './index.scss'
 import {API_SERVER} from '../../constant/apis'
 
 
-var addrList = [{ name:'行知小学'},
-                { name:'学军小学'},
-                { name:'建兰小学3'},
-                { name:'文一小学'},
-                { name:'翠园小学'},
-                { name:'宏鑫小学'},]
-var clsList  =  [{ name:'求是楼-A101'},
-                { name:'求是楼-A102'},
-                { name:'求是楼-A103'},
-                { name:'求是楼-A104'},
-                { name:'求是楼-A105'},
-                { name:'求是楼-A106'},]
-var typeList = ['音响板卡', '广告电视']
+import icon_load    from '../../static/loading.svg'
+import icon_refresh from '../../static/refresh.svg'
+import icon_search  from '../../static/search.svg'
+import icon_return  from '../../static/return.svg'
+import icon_user    from '../../static/user.svg'
+import icon_house   from '../../static/house.svg'
+import icon_scan    from '../../static/scan_b.svg'
 
-var icon_refresh= `${API_SERVER}/static/refresh.svg`
-var icon_search = `${API_SERVER}/static/search.svg`
-var icon_return = `${API_SERVER}/static/return.svg`
-var icon_user   = `${API_SERVER}/static/user.svg`
-var icon_house  = `${API_SERVER}/static/house.svg`
-var icon_scan   = `${API_SERVER}/static/scan_b.svg`
-var img_info    = `${API_SERVER}/static/info.png`
-var img_none    = `${API_SERVER}/static/none.png`
 
-var STATUS_INIT = 0
-var STATUS_ADDR = 1
-var STATUS_CLAS = 2
-var STATUS_BIND = 3
-var STATUS_EDIT = 4
+// 状态机定义
+const STATUS_INIT = 0
+const STATUS_ADDR = 1
+const STATUS_CLAS = 2
+const STATUS_BIND = 3
+const STATUS_EDIT = 4
+const STATUS_SORG = 5
+const STATUS_SCLS = 6
+
+// 资源类型
+const typeNameList = ['音响板卡','电视机','班牌','手环']
+const typeValList  = ['audio_board','tv','class_card','bracelet']
+
+
+// const icon_refresh= `${API_SERVER}/static/refresh.svg`
+// const icon_search = `${API_SERVER}/static/search.svg`
+// const icon_return = `${API_SERVER}/static/return.svg`
+// const icon_user   = `${API_SERVER}/static/user.svg`
+// const icon_house  = `${API_SERVER}/static/house.svg`
+// const icon_scan   = `${API_SERVER}/static/scan_b.svg`
+const img_info    = `${API_SERVER}/static/info.png`
+const img_none    = `${API_SERVER}/static/none.png`
+
+
+var isN=(e)=>{
+  return  ((e===null)||(e==='')||(e===undefined))?true:false
+}
+
 
 @inject('store')
 @observer
-class Home extends Component {
+class Config extends Component {
 
   constructor(props) {
     super(props)
     this.store = this.props.store.mainStore
     this.state = {
-      showInfo: false,
-      selAddr: -1,
+      selOrg: -1,
       selCls: -1,
+      selRes: -1,
+      selType: 0,
+      loading: false,
+      showInfo: false,
+      finishSearch: false,
       status: STATUS_INIT,
-      
+      equList: [],
+      hisList: [],
+      retList: [],
+      orgList: [],
       e_code: null,
       e_type: null,
       e_name: null,
-      equList: [],
     }
   }
 
 
   async componentDidShow () { 
-    
+    this.setState({loading: true })
+    let r = await this.store.listOrgHis()
+    this.setState({hisList: r.dataSource, loading: false})
+  }
+
+  searchCls = async(params) => {
+    this.setState({loading: true})
+    let r = await this.store.listCls(params)
+    this.setState({retList: r.dataSource, loading: false})
   }
 
 
-  doSelAddr =(e)=>{
-    this.setState({showInfo: true, selAddr: e, status: STATUS_ADDR})
+  doSel = async(e)=>{
+    switch(this.state.status) {
+      case STATUS_INIT: 
+      case STATUS_SORG:
+        this.searchCls({orgId:e.orgId})
+        this.setState({showInfo: true, selOrgId:e.orgId, selOrgName: e.name, status: STATUS_ADDR});break;
+      case STATUS_ADDR:
+      case STATUS_SCLS:
+        this.setState({showInfo: true, selResId:e.id, selClsName:e.resourceName, equList: e.equipmentList, status: STATUS_CLAS});break;
+    }   
   }
 
-  doSelCls =(e)=>{
-    this.setState({selCls: e, status: STATUS_CLAS})
-  }
 
   doBind =()=>{
-    this.setState({showInfo:false, status: STATUS_BIND})
+    this.setState({
+      showInfo:false, 
+      e_code:'', 
+      e_name:'',
+      e_type:typeNameList[0],
+      status: STATUS_BIND
+    })
   }
 
   doScan=()=>{
@@ -86,7 +118,8 @@ class Home extends Component {
   }
 
   doSelType=(e)=>{
-    this.setState({ e_type: typeList[e.detail.value] })
+    let id = e.detail.value
+    this.setState({ e_type: typeNameList[id], selType:id  })
   }
 
   doChgName=(e)=>{
@@ -97,34 +130,82 @@ class Home extends Component {
     this.setState({ e_code: e.target.value})
   }
 
-  doBindItem=()=>{
-    let {equList,e_code,e_type,e_name} = this.state
+  doBindItem=async()=>{
+    let {equList,e_code,e_type,e_name,selType} = this.state
 
-    if ((e_code===null)||(e_type===null)||(e_name===null)) {
+    if (isN(e_code)||isN(e_type)||isN(e_name)) {
       Taro.atMessage({ "message": "请输入信息", "type": "success", })
     }else{
-      equList.push({
+      let params = {
+        orgId: this.state.selOrgId,
+        resourceId: this.state.selResId,
         code: e_code,
-        type: e_type,
+        type: typeValList[selType],
         name: e_name,
-      })
-      this.setState({
-        status: STATUS_CLAS,
+      }
+      this.setState({loading: true})
+      let r = await this.store.equBind(params)
+      if (r===0) {
+        Taro.atMessage({ 'message':'绑定设备成功', 'type':'success' })
+        equList.push({ 
+          code: e_code, 
+          type: typeValList[selType], 
+          typeDesc: e_type,
+          name: e_name 
+        })
+      }
+      this.setState({ 
+        loading: false,
+        equList: equList,
+        status: STATUS_CLAS, 
         e_code: null,
         e_type: null,
         e_name: null,
-        equList: equList,
         showInfo: true,
       })
     }
   }
 
-  doEdit =(e)=>{
-    this.setState({ status: STATUS_EDIT, showInfo: false })
+  doEdit = async(e,i)=>{
+    this.setState({ 
+      status: STATUS_EDIT, 
+      showInfo: false, 
+      e_code:e.code, 
+      e_type: e.typeDesc, 
+      e_name:e.name,
+      e_id: e.id,
+      selRes: i,
+    })
   }
 
-  doChgEqu=(e)=>{
-   
+  doChgEqu=async(e,i)=>{
+    let {e_code,e_name,e_type,selRes,selType,e_id,equList} = this.state
+    let params = {
+      orgId: this.state.selOrgId,
+      resourceId: this.state.selResId,
+      code: e_code,
+      type: typeValList[selType] ,
+      name: e_name,
+      id: e_id,
+    }
+    this.setState({loading: true})
+    let r = await this.store.equUpdate(params)
+    if (r===0) {
+      Taro.atMessage({ 'message':'更新设备成功', 'type':'success' })
+      equList[selRes].name = e_name
+      equList[selRes].code = e_code
+      equList[selRes].type = typeValList[selType] 
+      equList[selRes].typeDesc = e_type
+    }
+    this.setState({ 
+      loading: false,
+      equList: equList,
+      status: STATUS_CLAS, 
+      e_code: null,
+      e_type: null,
+      e_name: null,
+      showInfo: true,
+    })
   }
 
   doRepair=(e)=>{
@@ -133,33 +214,66 @@ class Home extends Component {
 
 
   doReturn=()=>{
-    let {status} = this.state 
-
-    switch(status) {
-      case STATUS_ADDR: this.setState({status: STATUS_INIT,showInfo: false }); break;
-      case STATUS_CLAS: this.setState({status: STATUS_ADDR }); break;
-      case STATUS_BIND: this.setState({status: STATUS_CLAS,showInfo: true }); break;
-      case STATUS_EDIT: this.setState({status: STATUS_CLAS,showInfo: true }); break;
-
+    switch(this.state.status) {
+      case STATUS_ADDR: 
+        this.setState({status: STATUS_INIT,retList:[], showInfo: false }); break;
+      case STATUS_CLAS: 
+        console.log(this.state.retList)
+        this.setState({status: STATUS_ADDR, }); break;
+      case STATUS_BIND: 
+        this.setState({status: STATUS_CLAS,showInfo: true }); break;
+      case STATUS_EDIT: 
+        this.setState({status: STATUS_CLAS,showInfo: true }); break;
+      case STATUS_SORG: 
+        this.setState({status: STATUS_INIT, retList:[], finishSearch:false });break;
+      case STATUS_SCLS:
+        this.setState({status: STATUS_ADDR, retList:[], finishSearch:false });break;
     }
+  }
+
+  doShowSearch=()=>{
+    if (this.state.status === STATUS_INIT)　{
+      this.setState({status: STATUS_SORG, finishSearch:false})
+    }else{
+      this.setState({status: STATUS_SCLS, retList: [], finishSearch:false})
+    }
+  }
+
+  doSearch=async(e)=>{
+    let keyword = e.detail.value
     
+    this.setState({loading: true, finishSearch:true })
+
+
+    if (this.state.status === STATUS_SORG)　{
+      let params = { keyword:keyword, pageSize:20, pageNo:1 }
+      let r = await this.store.listOrg(params)
+      this.setState({retList: r.dataSource, loading: false})
+    }else{
+      let params = { orgId:this.state.selOrgId }
+      this.searchCls(params)
+    }
   }
 
 
   render () {
-    const { showInfo,selAddr,selCls,
-      status,e_name,e_code,e_type,equList } = this.state
+    const { status,showInfo,retList,equList,hisList,
+            e_name,e_code,e_type,selOrgName,selClsName } = this.state
+    const focus = (this.state.finishSearch)?false:true
+
     let addr 
     switch(status) {
-      case STATUS_INIT:   addr = '';break;
-      case STATUS_ADDR: addr = (showInfo)?addrList[selAddr].name:"";break;
-      case STATUS_CLAS: addr = (showInfo)?clsList[selCls].name:"";break;
+      case STATUS_INIT: addr = '';break;
+      case STATUS_ADDR: addr = (showInfo)?selOrgName:"";break;
+      case STATUS_CLAS: addr = (showInfo)?selClsName:"";break;
     }
     
 
     return (
-      <View className='g-home'>
+      <View className='g-config'>
         <AtMessage/>
+
+        {(this.state.loading)&&<View className="g-loading"><Image src={icon_load}></Image></View>}
 
         {((status!== STATUS_BIND)&&(status!==STATUS_EDIT))&&
         <View className="m-hd">
@@ -177,7 +291,7 @@ class Home extends Component {
         </View>}
 
 
-        {(showInfo)&&
+        {((status=== STATUS_ADDR)||(status===STATUS_CLAS))&&
         <View className="m-info">
           <View className="m-wrap">
             <View className="m-tl">{addr}</View>
@@ -195,16 +309,16 @@ class Home extends Component {
           <View className="f-search">
             <View className="f-wrap">
               <Image className="f-icon" src={icon_search}></Image>
-              <Input className="f-input" placeholder="请输入教室名称进行搜索"></Input>
+              <View className="f-input" onClick={this.doShowSearch}>请输入名称进行搜索</View>
             </View>
           </View>}
           
-          {(status===STATUS_INIT)&&<View className="f-tl">最近连接</View>}
+          {(status===STATUS_INIT)&&<View className="f-tl">最近管理的组织</View>}
 
           {(status==STATUS_INIT)&&
           <View className="m-wrap">
-            {addrList.map((item,i)=>
-              <View className="f-res" onClick={this.doSelAddr.bind(this,i)}>
+            {hisList.map((item,i)=>
+              <View className="f-res" onClick={this.doSel.bind(this,item)}>
                 <View className="f-hd">
                   <Image className="f-icon" src={icon_house}></Image>
                 </View>
@@ -216,16 +330,49 @@ class Home extends Component {
             )}
           </View>}
 
+
+
+          {((status===STATUS_SORG)||(status===STATUS_SCLS))&&
+          <View className="m-bd">
+            <View className="f-sear">
+              <View className="f-wrap">
+                <Image className="f-icon-s" src={icon_search}></Image>
+                <Input className="f-input" 
+                       placeholder="请输入名称进行搜索"  
+                       onConfirm={this.doSearch}
+                       confirm-type="search" focus={focus}></Input>
+              </View>
+              <View className="f-cancel" onClick={this.doReturn}> 取消</View>
+            </View>
+            <View className="m-count">
+               搜索到 <Text>{retList.length}</Text> 条相关内容
+            </View>
+            <View className="m-wrap">
+              {retList.map((item,i)=>
+                <View className="f-res" onClick={this.doSel.bind(this,item)}>
+                  <View className="f-hd">
+                    <Image className="f-icon" src={icon_house}></Image>
+                  </View>
+                  <View className="f-bd">
+                    {(status===STATUS_SORG)&& <View className="f-bud">{item.name}</View>}
+
+                    {(status===STATUS_SCLS)&& <View className="f-bud">{item.resourceName}</View>}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>}
+
+
           {(status==STATUS_ADDR)&&
           <View className="m-wrap">
-            {clsList.map((item,i)=>
-              <View className="f-res" onClick={this.doSelCls.bind(this,i)}>
+            {retList.map((item,i)=>
+              <View className="f-res" onClick={this.doSel.bind(this,item)}>
                 <View className="f-hd">
                   <Image className="f-icon" src={icon_house}></Image>
                 </View>
                 <View className="f-bd">
-                  <View className="f-bud">{item.name}</View>
-                  <View className="f-cls">{item.cls}</View>
+                  <View className="f-bud">{item.resourceName}</View>
                 </View>
               </View>
             )}
@@ -233,6 +380,7 @@ class Home extends Component {
 
 
           {(status=== STATUS_CLAS)&& <View className="f-tl">关联设备</View>}
+
 
           {(status=== STATUS_CLAS)&&
           <View className="m-ret">
@@ -249,9 +397,9 @@ class Home extends Component {
             {(equList.length!==0)&&
             <View className="m-wrap">
               {equList.map((item,i)=>
-                <View className="m-item" onClick={this.doEdit}>
+                <View className="m-item" onClick={this.doEdit.bind(this,item,i)}>
                   <View className="m-name">{item.name}</View>
-                  <View className="m-label">{item.type}</View>
+                  <View className="m-label">{item.typeDesc}</View>
                   <View className="m-label">{item.code}</View>
                 </View>
               )}
@@ -277,7 +425,7 @@ class Home extends Component {
             <View className="m-row">
               <View className="m-tl">设备类型</View>
               <View className="m-form">
-                <Picker mode='selector' range={typeList} onChange={this.doSelType}>
+                <Picker mode='selector' range={typeNameList} onChange={this.doSelType}>
                 {(this.state.e_type===null)&& <View className='picker'> 请选择：</View>}
                 {(this.state.e_type!==null)&&<View className='picker'> {e_type} </View>}
               </Picker>
@@ -311,4 +459,4 @@ class Home extends Component {
   }
 }
 
-export default Home
+export default Config

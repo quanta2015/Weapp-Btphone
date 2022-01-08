@@ -16,7 +16,9 @@ class App extends Component {
     // this.setState({ refresh: true })
   }
 
-  componentDidShow () {}
+  componentDidShow () {
+    wx.hideTabBar({})
+  }
 
   componentDidHide () {}
 

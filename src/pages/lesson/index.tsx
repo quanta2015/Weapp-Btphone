@@ -6,70 +6,66 @@ import Taro from '@tarojs/taro'
 
 import { AtMessage, AtModalHeader, AtModalContent, AtModalAction } from 'taro-ui'
 import Modal from '../../utils/modal'
+import {openBle,bleCommand} from '../../utils/bt'
 
 import './index.scss'
 import {API_SERVER} from '../../constant/apis'
 
 
-// var list = [{ name:'广知楼', cls: 'A-101', idx: '8101'},
-//             { name:'广知楼', cls: 'A-102', idx: '8101'},
-//             { name:'广知楼', cls: 'A-103', idx: '8101'},
-//             { name:'广知楼', cls: 'A-104', idx: '8101'},
-//             { name:'广知楼', cls: 'A-105', idx: '8101'},
-//             { name:'广知楼', cls: 'A-106', idx: '8101'},
-//             { name:'广知楼', cls: 'A-107', idx: '8101'},
-//             { name:'广知楼', cls: 'A-108', idx: '8101'},]
-
-var _ST_TIME,count
-var TIME_WAIT   = 3
-var icon_return = `${API_SERVER}/static/return.svg`
-var icon_search = `${API_SERVER}/static/search.svg`
-var icon_microg = `${API_SERVER}/static/microp_g.svg`
-var icon_microc = `${API_SERVER}/static/microp_c.svg`
-var icon_user   = `${API_SERVER}/static/user.svg`
-var icon_user2  = `${API_SERVER}/static/user2.svg`
-var icon_house  = `${API_SERVER}/static/house.svg`
-var icon_scan   = `${API_SERVER}/static/scan.svg`
-var img_lesson  = `${API_SERVER}/static/lesson.png`
-var img_none    = `${API_SERVER}/static/none.png`
-var img_load    = `${API_SERVER}/static/loading.svg`
+import icon_load    from '../../static/loading.svg'
+import icon_refresh from '../../static/refresh.svg'
+import icon_search  from '../../static/search.svg'
+import icon_return  from '../../static/return.svg'
+import icon_user    from '../../static/user.svg'
+import icon_house   from '../../static/house.svg'
+import icon_scan    from '../../static/scan.svg'
+import icon_microg  from '../../static/microp_g.svg'
+import img_none     from '../../static/none.png'
+import img_lesson   from '../../static/lesson.png'
 
 
-var STATUS_INIT = 0
-var STATUS_SEAR = 1
-var STATUS_USER = 2
 
+// 状态机定义
+var STATUS_INIT   = 0
+var STATUS_SEAR   = 1
+var CMD_SEND_ADDR = 1
+var CMD_RSET_CARD = 2
 
 
 @inject('store')
 @observer
-class Home extends Component {
+class Lesson extends Component {
 
   constructor(props) {
     super(props)
     this.store = this.props.store.mainStore
     this.state = {
-      showSearch: false,
-      showConfirm: false,
+      bind:     false,
+      loading:  false,
       showConn: false,
-      count: TIME_WAIT,
-      status: 0,
+      showModal:  false,
+      showSearch: false,
+      showConfirm:  false,
+      showBleconf:  false,
+      finishSearch: false,
+      status: STATUS_INIT,
       hisList: [],
       retList: [],
-      bind: false,
-      showModal: false,
-      loading: false,
+      macAddr: null,
     }
   }
 
 
+  dolog = async()=>{
+    let {info} = this.state
+    let s = await this.store.saveConnInfo(info)
+    console.log(s)
+    Taro.atMessage({ 'message':'保存连接信息成功', 'type':'success' })
+  }
 
-  async componentDidMount () { 
-
+  async componentDidShow() {
     this.setState({loading: true })
-    await this.store.init()
-    // let r = await this.store.listResHis()
-    let s = await this.store.listRes()
+    let s = await this.store.listResHis()
     this.setState({hisList: s.dataSource})
     
     let r = await this.store.loadHsAddr()
@@ -81,19 +77,50 @@ class Home extends Component {
     }
   }
 
-  doShowConn=()=>{
+
+  // 显示连接板卡对话框
+  doShowConn = async(id) =>{
     if (this.state.bind) {
-      this.setState({showConn: true})
+      
+      let params = { resourceId:id }
+      this.setState({loading: true })
+      let r = await this.store.loadResAddr(params)
+      let f = r.formValue
+
+      if (f.equipmentList.length===0) {
+        Taro.atMessage({ 'message': '尚未绑定板卡','type': 'error' })
+        this.setState({ loading: false })
+      }else{
+        let addrCard = f.equipmentList[0].code
+        let addrHdst = f.itemCode
+        let command  = bleCommand(addrHdst,addrCard)
+        let info = {
+          equipmentId: f.equipmentList[0].id,
+          itemId: f.itemId,
+          orgId: f.orgId,
+          resourceId: f.equipmentList[0].resourceId,
+          message: 'success',
+          status: 'success',
+        }
+        console.log('command:',command)
+        this.setState({ loading: false, showConn: true, cmd:command, info:info })
+      }
     }else{
       this.setState({showModal: true})
     }
   }
 
-  doCancel=()=>{
+  doConnBleCard = () =>{
+    this.setState({ showConn: false })
+    openBle(CMD_SEND_ADDR, this.state.cmd, this.dolog)
+  }
+
+
+  doCancel = ()=>{
     this.setState({showConn: false})
   }
 
-  doScan=()=>{
+  doScan = ()=>{
     wx.scanCode({
       success(res) {
         let info = JSON.stringify(res.result)
@@ -101,34 +128,34 @@ class Home extends Component {
     })
   }
 
-  doShowSearch=()=>{
+  doShowSearch = ()=>{
     this.setState({status: STATUS_SEAR})
   }
 
-  doHideSearch=()=>{
+  doHideSearch = ()=>{
     this.setState({status: STATUS_INIT})
   }
 
-  doSearch=async(e)=>{
+  doSearch = async(e)=>{
     let keyword = e.detail.value
     let params = { keyword:keyword }
 
-    this.setState({loading: true })
+    this.setState({loading: true, finishSearch:true })
     let r = await this.store.listRes(params)
     this.setState({retList: r.dataSource, loading: false})
   }
 
-  doBind=()=>{
+  doBind = ()=>{
     Taro.navigateTo({ url: `/pages/headset/index?status=bind` })
   }
 
-  doGotoUser=()=>{
+  doGotoUser = ()=>{
     Taro.navigateTo({ url: `/pages/user/index` })
   }
 
   render () {
-    const { showSearch,showConfirm,showConn,count,status,hisList,retList,showModal,loading } = this.state
-    const focus = (loading)?false:true
+    const { showBleconf,showSearch,showConfirm,showConn,status,hisList,retList,showModal,loading } = this.state
+    const focus = (this.state.finishSearch)?false:true
 
     return (
       <View className='g-lesson'>
@@ -137,9 +164,10 @@ class Home extends Component {
         <Modal isOpened={showModal} 
                title={'提示'}
                content="未绑定耳机，请先绑定耳机"
+               confirmText={'去绑定'}
                onConfirm = {this.doBind} />
 
-        {(loading)&&<View className="g-loading"><Image src={img_load}></Image></View>}
+        {(loading)&&<View className="g-loading"><Image src={icon_load}></Image></View>}
         
         {((status===STATUS_INIT)||(status===STATUS_SEAR))&&
         <View className="m-hd">
@@ -172,7 +200,7 @@ class Home extends Component {
           {(hisList.length>0)&&
           <View className="m-wrap">
             {hisList.map((item,i)=>
-              <View className="f-res" onClick={this.doShowConn}>
+              <View className="f-res" onClick={this.doShowConn.bind(this,item.id)}>
                 <View className="f-hd">
                   <Image className="f-icon" src={icon_house}></Image>
                 </View>
@@ -215,7 +243,7 @@ class Home extends Component {
           </View>
           <View className="m-wrap">
             {retList.map((item,i)=>
-              <View className="f-res" onClick={this.doShowConn}>
+              <View className="f-res" onClick={this.doShowConn.bind(this,item.id)}>
                 <View className="f-hd">
                   <Image className="f-icon" src={icon_house}></Image>
                 </View>
@@ -241,81 +269,14 @@ class Home extends Component {
             </View>
             <View className="m-fun">
               <View className="m-btn" onClick={this.doCancel}>取消</View>
-              <View className="m-btn f-blue" onClick={this.doCancel}>确定</View>
+              <View className="m-btn f-blue" onClick={this.doConnBleCard}>确定</View>
             </View>
           </View>
         </View>}
-
-
-        {(status===STATUS_USER)&&
-        <View className="g-user">
-          <View className="m-hd">
-            <View className="m-return" onClick={this.doReturn}>
-              <Image className="f-icon " src={icon_return}></Image>
-            </View>
-            <View className="m-tl">我的</View>
-          </View>
-          <View className="m-user">
-            <Image src={icon_user2}> </Image>
-            <Text> 旺旺旺</Text>
-          </View>
-
-          <View className="m-sect">
-            <View className="m-row">
-              <Image className="f-icon" src={icon_good}> </Image>
-              <Text>点赞评论</Text>
-              <Image className="f-icon" src={icon_go} > </Image>
-            </View>
-
-            <View className="m-row">
-              <Image className="f-icon" src={icon_help}> </Image>
-              <Text>我的动态</Text>
-              <Image className="f-icon" src={icon_go} > </Image>
-            </View>
-          </View>
-
-          <View className="m-sect">
-            <View className="m-row">
-              <Image className="f-icon" src={icon_star}> </Image>
-              <Text>收藏</Text>
-              <Image className="f-icon" src={icon_go} > </Image>
-            </View>
-          </View>
-
-          <View className="m-sect">
-            <View className="m-row">
-              <Image className="f-icon" src={icon_child}> </Image>
-              <Text>小助理</Text>
-              <Image className="f-icon" src={icon_go} > </Image>
-            </View>
-
-            <View className="m-row">
-              <Image className="f-icon" src={icon_quick}> </Image>
-              <Text>快捷入口</Text>
-              <Image className="f-icon" src={icon_go} > </Image>
-            </View>
-
-            <View className="m-row">
-              <Image className="f-icon" src={icon_headset}> </Image>
-              <Text>我的耳机</Text>
-              <Image className="f-icon" src={icon_go} > </Image>
-            </View>
-          </View>
-
-          <View className="m-sect">
-            <View className="m-row">
-              <Image className="f-icon" src={icon_conf}> </Image>
-              <Text>关怀模式</Text>
-              <Image className="f-icon" src={icon_go} > </Image>
-            </View>
-          </View>
-
-        </View>}
-
 
       </View>
     )
   }
 }
 
-export default Home
+export default Lesson

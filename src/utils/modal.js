@@ -51,7 +51,7 @@ class Modal extends React.Component {
                     <View className="m-title">{title}</View>
                     <View className="m-content">{content}</View>
                     <View className="m-btn" onClick={this.handleConfirm}>
-                         去绑定
+                         {confirmText}
                     </View>
                 </View>
                 
