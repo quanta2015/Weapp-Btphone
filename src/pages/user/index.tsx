@@ -3,7 +3,6 @@ import { Component } from 'react'
 import { View, Button, Text,Form, Input, Image } from '@tarojs/components'
 import { observer, inject } from 'mobx-react'
 import './index.scss'
-import {API_SERVER} from '../../constant/apis'
 
 
 import icon_user2   from '../../static/user2.svg'

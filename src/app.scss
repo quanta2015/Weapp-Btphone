@@ -1,5 +1,8 @@
 @import "~taro-ui/dist/style/components/message.scss";
 @import "~taro-ui/dist/style/components/modal.scss";
+@import "~taro-ui/dist/style/components/activity-indicator.scss";
+@import '~taro-ui/dist/style/components/loading.scss';
+
 @import "common.scss";
 
 
@@ -22,7 +25,7 @@
   &>image {
     width: 64Px;
     height: 64Px;
-    background: rgba(0,0,0,.9);
+    background: rgba(150,150,150,.8);
     padding: 10rpx;
     border-radius: 20rpx;
   }

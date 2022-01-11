@@ -3,9 +3,6 @@ import { Component } from 'react'
 import { View, Button, Text, Input, Image,Picker } from '@tarojs/components'
 import { observer, inject } from 'mobx-react'
 import { AtMessage } from 'taro-ui'
-import {fspc} from '../../utils/fn'
-import SwitchRole from '../../component/switchrole' 
-
 import './index.scss'
 
 import icon_load    from '../../static/loading.svg'
@@ -17,8 +14,8 @@ import icon_house   from '../../static/house.svg'
 import icon_scan    from '../../static/scan_b.svg'
 import img_info     from '../../static/info.png'
 import img_none     from '../../static/none.png'
-import icon_seno    from '../../static/icon_seno.svg'
-import icon_switch  from '../../static/icon_switch.svg'
+
+
 
 // 状态机定义
 const STATUS_INIT = 0
@@ -53,7 +50,6 @@ class Config extends Component {
       selType: 0,
       loading: false,
       showInfo: false,
-      showSwitch: false,
       finishSearch: false,
       status: STATUS_INIT,
       equList: [],
@@ -63,30 +59,28 @@ class Config extends Component {
       e_code: null,
       e_type: null,
       e_name: null,
-      showActivity: false ,
-      pageNo: 1,
     }
   }
 
 
-  initData=async()=>{
+  async componentDidShow () { 
     this.setState({loading: true })
     let r = await this.store.listOrgHis()
     this.setState({hisList: r.dataSource, loading: false})
   }
 
-
-  async componentDidShow () { 
-    this.initData()
+  searchCls = async(params) => {
+    this.setState({loading: true})
+    let r = await this.store.listCls(params)
+    this.setState({retList: r.dataSource, loading: false})
   }
 
 
-  // 选择资源对象
   doSel = async(e)=>{
     switch(this.state.status) {
       case STATUS_INIT: 
       case STATUS_SORG:
-        this.searchCls({orgId:e.orgId, keyword:''})
+        this.searchCls({orgId:e.orgId})
         this.setState({showInfo: true, selOrgId:e.orgId, selOrgName: e.name, status: STATUS_ADDR});break;
       case STATUS_ADDR:
       case STATUS_SCLS:
@@ -94,7 +88,7 @@ class Config extends Component {
     }   
   }
 
-  // 显示绑定对话框
+
   doBind =()=>{
     this.setState({
       showInfo:false, 
@@ -105,7 +99,6 @@ class Config extends Component {
     })
   }
 
-  // 扫码二维码
   doScan=()=>{
     let that = this
     wx.scanCode({
@@ -113,34 +106,19 @@ class Config extends Component {
     })
   }
 
-  // 更新类型
   doSelType=(e)=>{
     let id = e.detail.value
     this.setState({ e_type: typeNameList[id], selType:id  })
   }
-  // 更新名称
+
   doChgName=(e)=>{
     this.setState({ e_name: e.target.value})
   }
-  // 更新地址编码
+
   doChgCode=(e)=>{
     this.setState({ e_code: e.target.value})
   }
 
-  // 显示绑定资源
-  doEdit = async(e,i)=>{
-    this.setState({ 
-      status: STATUS_EDIT, 
-      showInfo: false, 
-      e_code:e.code, 
-      e_type: e.typeDesc, 
-      e_name:e.name,
-      e_id: e.id,
-      selRes: i,
-    })
-  }
-
-  // 绑定资源
   doBindItem=async()=>{
     let {equList,e_code,e_type,e_name,selType} = this.state
 
@@ -176,8 +154,19 @@ class Config extends Component {
       })
     }
   }
-  
-  // 更新资源
+
+  doEdit = async(e,i)=>{
+    this.setState({ 
+      status: STATUS_EDIT, 
+      showInfo: false, 
+      e_code:e.code, 
+      e_type: e.typeDesc, 
+      e_name:e.name,
+      e_id: e.id,
+      selRes: i,
+    })
+  }
+
   doChgEqu=async(e,i)=>{
     let {e_code,e_name,e_type,selRes,selType,e_id,equList} = this.state
     let params = {
@@ -208,8 +197,11 @@ class Config extends Component {
     })
   }
 
-  
-  // 返回
+  doRepair=(e)=>{
+   
+  }
+
+
   doReturn=()=>{
     switch(this.state.status) {
       case STATUS_ADDR: 
@@ -222,13 +214,12 @@ class Config extends Component {
       case STATUS_EDIT: 
         this.setState({status: STATUS_CLAS,showInfo: true }); break;
       case STATUS_SORG: 
-        this.setState({status: STATUS_INIT, retList:[], finishSearch:false, pageNo:1 });break;
+        this.setState({status: STATUS_INIT, retList:[], finishSearch:false });break;
       case STATUS_SCLS:
-        this.setState({status: STATUS_ADDR, retList:[], finishSearch:false, pageNo:1 });break;
+        this.setState({status: STATUS_ADDR, retList:[], finishSearch:false });break;
     }
   }
 
-  // 显示搜索对话框
   doShowSearch=()=>{
     if (this.state.status === STATUS_INIT)　{
       this.setState({status: STATUS_SORG, finishSearch:false})
@@ -237,50 +228,25 @@ class Config extends Component {
     }
   }
 
-  // 搜索
   doSearch=async(e)=>{
-    let keyword = fspc(e.detail.value)
-    let u = this.store.getUser()
-    let orgId = u.emp[0].orgId
+    let keyword = e.detail.value
+    
     this.setState({loading: true, finishSearch:true })
+
+
     if (this.state.status === STATUS_SORG)　{
-      let params = { keyword:keyword, orgId: orgId, pageSize:20, pageNo:1 }
+      let params = { keyword:keyword, pageSize:20, pageNo:1 }
       let r = await this.store.listOrg(params)
-      let page = parseInt(r.pagination.total/r.pagination.pageSize)+1
-      this.setState({retList: r.dataSource, loading: false, page: page})
+      this.setState({retList: r.dataSource, loading: false})
     }else{
-      let params = { keyword:keyword, orgId:this.state.selOrgId }
+      let params = { orgId:this.state.selOrgId }
       this.searchCls(params)
     }
   }
 
-  // 搜索教室
-  searchCls = async(params) => {
-    this.setState({loading: true})
-    let r = await this.store.listCls(params)
-    let page = parseInt(r.pagination.total/r.pagination.pageSize)+1
-    this.setState({retList: r.dataSource, loading: false, page: page})
-  }
-
-  doRepair=(e)=>{ }
-
-  doSwitch = ()=>{
-    let u = this.store.getUser()
-    this.setState({showSwitch: true,userlist: u })
-  }
-
-  doSelRole=async(role,params)=>{
-    this.setState({showSwitch: false, loading:true})
-    await this.store.switch(params)
-    switch(role) {
-      case 0: Taro.switchTab({url:`/pages/lesson/index`});break;
-      case 1: this.initData();break;
-    } 
-  }
-
 
   render () {
-    const { status,showInfo,retList,equList,hisList,showSwitch,
+    const { status,showInfo,retList,equList,hisList,
             e_name,e_code,e_type,selOrgName,selClsName } = this.state
     const focus = (this.state.finishSearch)?false:true
 
@@ -298,14 +264,10 @@ class Config extends Component {
 
         {(this.state.loading)&&<View className="g-loading"><Image src={icon_load}></Image></View>}
 
-        {(showSwitch)&&<SwitchRole userlist={this.state.userlist} selRole={this.store.getRole()} onSwitch={this.doSelRole} />} 
-
         {((status!== STATUS_BIND)&&(status!==STATUS_EDIT))&&
         <View className="m-hd">
-          <View className="m-tl" onClick={this.doSwitch}>
-            <View>张三</View>
-            <Image className="f-icon-s" src={icon_switch}></Image>
-          </View>
+          <View className="m-user">张三</View>
+          <Image className="f-icon-s f-icon-user" src={icon_user}></Image>
         </View>}
 
         {((status=== STATUS_BIND)||(status===STATUS_EDIT))&&
@@ -360,7 +322,7 @@ class Config extends Component {
 
 
           {((status===STATUS_SORG)||(status===STATUS_SCLS))&&
-          <View className="m-sear">
+          <View className="m-bd">
             <View className="f-sear">
               <View className="f-wrap">
                 <Image className="f-icon-s" src={icon_search}></Image>
@@ -371,12 +333,9 @@ class Config extends Component {
               </View>
               <View className="f-cancel" onClick={this.doReturn}> 取消</View>
             </View>
-
-            {(retList.length!==0)&&
             <View className="m-count">
                搜索到 <Text>{retList.length}</Text> 条相关内容
-            </View>}
-            {(retList.length!==0)&&
+            </View>
             <View className="m-wrap">
               {retList.map((item,i)=>
                 <View className="f-res" onClick={this.doSel.bind(this,item)}>
@@ -390,23 +349,7 @@ class Config extends Component {
                   </View>
                 </View>
               )}
-            </View>}
-
-            {(retList.length===0)&&
-            <View className="m-wrap">
-              <View className="m-none">
-                <Image src={icon_seno}></Image>
-                <Text>暂无匹配记录</Text>
-              </View>
-            </View>}
-
-            {(this.state.showActivity)&&
-            <View className="m-end">
-              <AtActivityIndicator></AtActivityIndicator>
-            </View>}
-
-            {((this.state.pageNo===this.state.page)&&(retList.length!==0))&&
-              <View className="m-end"> ---- 没有更多内容啦 ----</View>}
+            </View>
           </View>}
 
 
