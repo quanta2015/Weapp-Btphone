@@ -11,12 +11,14 @@
   background:#F8F9FF;
 
 
-  .m-btn {
+  &>.m-btn {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     margin-bottom: 60rpx;
+
+    
     
     image {
       width: 184rpx;

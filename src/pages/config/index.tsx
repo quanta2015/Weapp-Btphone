@@ -2,8 +2,8 @@ import Taro from '@tarojs/taro'
 import { Component } from 'react'
 import { View, Button, Text, Input, Image,Picker } from '@tarojs/components'
 import { observer, inject } from 'mobx-react'
-import { AtMessage } from 'taro-ui'
-import {fspc} from '../../utils/fn'
+import { AtMessage, AtActivityIndicator } from "taro-ui";
+import {fspc, isN} from '../../utils/fn'
 import SwitchRole from '../../component/switchrole' 
 
 import './index.scss'
@@ -30,13 +30,11 @@ const STATUS_SORG = 5
 const STATUS_SCLS = 6
 
 // 资源类型
-const typeNameList = ['音响板卡','电视机','班牌','手环']
-const typeValList  = ['audio_board','tv','class_card','bracelet']
+const typeNameList = ['音响板卡','广告电视']
+const typeValList  = ['audio_board','tv']
 
 
-var isN=(e)=>{
-  return  ((e===null)||(e==='')||(e===undefined))?true:false
-}
+
 
 
 @inject('store')
@@ -63,21 +61,71 @@ class Config extends Component {
       e_code: null,
       e_type: null,
       e_name: null,
+      e_id:   null,
       showActivity: false ,
       pageNo: 1,
+      total: 0,
     }
+  }
+
+  initVar =()=> {
+    this.setState({
+      selOrg: -1,
+      selCls: -1,
+      selRes: -1,
+      selType: 0,
+      loading: false,
+      showInfo: false,
+      showSwitch: false,
+      finishSearch: false,
+      status: STATUS_INIT,
+      equList: [],
+      hisList: [],
+      retList: [],
+      orgList: [],
+      e_code: null,
+      e_type: null,
+      e_name: null,
+      e_id:   null,
+      showActivity: false ,
+      pageNo: 1,
+      total: 0,
+      keyword: '',
+    })
   }
 
 
   initData=async()=>{
-    this.setState({loading: true })
+    this.initVar()
+    let userName = this.store.getCurUser().userName
+    this.setState({loading: true, userName:userName  })
     let r = await this.store.listOrgHis()
+
+    console.log(r)
     this.setState({hisList: r.dataSource, loading: false})
   }
 
 
+  initScan = async() => {
+    let scanRid = this.store.getScanRid()
+    let scanOid = this.store.getScanOid()
+    let params = { orgId: scanOid, resourceId: scanRid}
+    console.log('params',params)
+    if (!isN(scanRid)) {
+      this.setState({loading: true})
+      let r = await this.store.listCls(params)
+
+
+      
+      console.log(r)
+      this.setState({loading: false, showInfo: true, selOrgId:scanOid, selOrgName: "",selResId:scanRid, equList:r.dataSource[0].equipmentList, status: STATUS_CLAS})
+    }
+  } 
+
+
   async componentDidShow () { 
-    this.initData()
+    await this.initData()
+    await this.initScan()
   }
 
 
@@ -86,10 +134,11 @@ class Config extends Component {
     switch(this.state.status) {
       case STATUS_INIT: 
       case STATUS_SORG:
-        this.searchCls({orgId:e.orgId, keyword:''})
+        this.searchCls({orgId:e.orgId, keyword:'', pageNo:1, pageSize: 20})
         this.setState({showInfo: true, selOrgId:e.orgId, selOrgName: e.name, status: STATUS_ADDR});break;
       case STATUS_ADDR:
       case STATUS_SCLS:
+        console.log(e.id)
         this.setState({showInfo: true, selResId:e.id, selClsName:e.resourceName, equList: e.equipmentList, status: STATUS_CLAS});break;
     }   
   }
@@ -120,11 +169,13 @@ class Config extends Component {
   }
   // 更新名称
   doChgName=(e)=>{
-    this.setState({ e_name: e.target.value})
+    let val = fspc(e.target.value)
+    this.setState({ e_name: val})
   }
   // 更新地址编码
   doChgCode=(e)=>{
-    this.setState({ e_code: e.target.value})
+    let val = fspc(e.target.value)
+    this.setState({ e_code: val})
   }
 
   // 显示绑定资源
@@ -156,29 +207,30 @@ class Config extends Component {
       }
       this.setState({loading: true})
       let r = await this.store.equBind(params)
-      if (r===0) {
+      if (r.code===0) {
+        let s = await this.store.listOrgHis()
         Taro.atMessage({ 'message':'绑定设备成功', 'type':'success' })
-        equList.push({ 
-          code: e_code, 
-          type: typeValList[selType], 
-          typeDesc: e_type,
-          name: e_name 
+        equList.push(r.data)
+        this.setState({ 
+          loading: false,
+          equList: equList,
+          status: STATUS_CLAS, 
+          e_code: null,
+          e_type: null,
+          e_name: null,
+          e_id: r.data.id,
+          showInfo: true,
+          hisList: s.dataSource,
         })
+      }else{
+        this.setState({ loading: false })
       }
-      this.setState({ 
-        loading: false,
-        equList: equList,
-        status: STATUS_CLAS, 
-        e_code: null,
-        e_type: null,
-        e_name: null,
-        showInfo: true,
-      })
+      
     }
   }
   
   // 更新资源
-  doChgEqu=async(e,i)=>{
+  doChgEqu=async(e,i)=>{ 
     let {e_code,e_name,e_type,selRes,selType,e_id,equList} = this.state
     let params = {
       orgId: this.state.selOrgId,
@@ -188,24 +240,30 @@ class Config extends Component {
       name: e_name,
       id: e_id,
     }
-    this.setState({loading: true})
-    let r = await this.store.equUpdate(params)
-    if (r===0) {
-      Taro.atMessage({ 'message':'更新设备成功', 'type':'success' })
-      equList[selRes].name = e_name
-      equList[selRes].code = e_code
-      equList[selRes].type = typeValList[selType] 
-      equList[selRes].typeDesc = e_type
+    if (isN(e_code)||isN(e_name)) {
+      Taro.atMessage({ 'message':' 请输入完整的设备信息！', 'type':'error' })
+    }else{
+      this.setState({loading: true})
+      let r = await this.store.equUpdate(params)
+      if (r.code===0) {
+        Taro.atMessage({ 'message':'更新设备成功', 'type':'success' })
+        equList[selRes].name = e_name
+        equList[selRes].code = e_code
+        equList[selRes].type = typeValList[selType] 
+        equList[selRes].typeDesc = e_type
+        this.setState({ 
+          loading: false,
+          equList: equList,
+          status: STATUS_CLAS, 
+          e_code: null,
+          e_type: null,
+          e_name: null,
+          showInfo: true,
+        })
+      }else{
+        this.setState({ loading: false })
+      }
     }
-    this.setState({ 
-      loading: false,
-      equList: equList,
-      status: STATUS_CLAS, 
-      e_code: null,
-      e_type: null,
-      e_name: null,
-      showInfo: true,
-    })
   }
 
   
@@ -240,26 +298,36 @@ class Config extends Component {
   // 搜索
   doSearch=async(e)=>{
     let keyword = fspc(e.detail.value)
+
+    if (isN(keyword)) {
+      Taro.atMessage({ 'message':' 请输入搜索关键字', 'type':'error' })
+      return
+    }
     let u = this.store.getUser()
-    let orgId = u.emp[0].orgId
-    this.setState({loading: true, finishSearch:true })
+    let orgId = this.store.getCurUser().orgId
+    this.setState({loading: true, finishSearch:true, keyword: keyword, pageNo:1 })
     if (this.state.status === STATUS_SORG)　{
       let params = { keyword:keyword, orgId: orgId, pageSize:20, pageNo:1 }
       let r = await this.store.listOrg(params)
-      let page = parseInt(r.pagination.total/r.pagination.pageSize)+1
-      this.setState({retList: r.dataSource, loading: false, page: page})
+      console.log(r)
+      let total = r.pagination.total
+      let page = parseInt(total/r.pagination.pageSize)+1
+      this.setState({retList: r.dataSource, loading: false, page: page, total: total})
     }else{
-      let params = { keyword:keyword, orgId:this.state.selOrgId }
+      let params = { keyword:keyword, orgId:this.state.selOrgId, pageNo: 1, pageSize:20 }
       this.searchCls(params)
     }
   }
 
   // 搜索教室
   searchCls = async(params) => {
+    console.log(params)
     this.setState({loading: true})
     let r = await this.store.listCls(params)
-    let page = parseInt(r.pagination.total/r.pagination.pageSize)+1
-    this.setState({retList: r.dataSource, loading: false, page: page})
+    console.log(r)
+    let total = r.pagination.total
+    let page = parseInt(total/r.pagination.pageSize)+1
+    this.setState({retList: r.dataSource, loading: false, page: page, total: total})
   }
 
   doRepair=(e)=>{ }
@@ -278,9 +346,29 @@ class Config extends Component {
     } 
   }
 
+  onReachBottom = async() => {
+    let {pageNo, retList, page, keyword} = this.state
+
+    if (pageNo+1 <= page) {
+      let r
+      this.setState({ showActivity: true })
+      let orgId = this.state.selOrgId
+      let params = { keyword:keyword, orgId: orgId, pageNo:pageNo+1, pageSize: 20 }
+
+      if (this.state.status === STATUS_SORG)　{
+        r = await this.store.listOrg(params)
+      }else{
+        r = await this.store.listCls(params)
+      }
+      retList.push(...r.dataSource)
+      this.setState({retList: retList, pageNo: pageNo+1,showActivity: false })
+    }
+  }
+
 
   render () {
-    const { status,showInfo,retList,equList,hisList,showSwitch,
+
+    const { userName,status,showInfo,retList,equList,hisList,showSwitch,
             e_name,e_code,e_type,selOrgName,selClsName } = this.state
     const focus = (this.state.finishSearch)?false:true
 
@@ -290,7 +378,7 @@ class Config extends Component {
       case STATUS_ADDR: addr = (showInfo)?selOrgName:"";break;
       case STATUS_CLAS: addr = (showInfo)?selClsName:"";break;
     }
-    
+
 
     return (
       <View className='g-config'>
@@ -303,7 +391,7 @@ class Config extends Component {
         {((status!== STATUS_BIND)&&(status!==STATUS_EDIT))&&
         <View className="m-hd">
           <View className="m-tl" onClick={this.doSwitch}>
-            <View>张三</View>
+            <View>{userName}</View>
             <Image className="f-icon-s" src={icon_switch}></Image>
           </View>
         </View>}
@@ -374,7 +462,7 @@ class Config extends Component {
 
             {(retList.length!==0)&&
             <View className="m-count">
-               搜索到 <Text>{retList.length}</Text> 条相关内容
+               搜索到 <Text>{this.state.total}</Text> 条相关内容
             </View>}
             {(retList.length!==0)&&
             <View className="m-wrap">

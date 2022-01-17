@@ -76,6 +76,13 @@
         top: 32rpx;
       }
 
+      .m-cnt {
+        display: flex;
+        word-wrap: break-word;
+        white-space: normal;
+        word-break: break-all;
+      }
+
       .m-tl {
         font-size: 32rpx;
         height: 60rpx;
@@ -93,6 +100,10 @@
 
     .m-row-c {
       flex-direction: column;
+
+      &>.m-tl:after {
+        content: ''
+      }
 
       textarea {
         padding: 20rpx;

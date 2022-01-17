@@ -4,6 +4,7 @@ import { View, Button, Text,Form, Input, Image, Textarea } from '@tarojs/compone
 import { observer, inject } from 'mobx-react'
 import { getCurrentInstance } from '@tarojs/taro'
 import { AtMessage } from 'taro-ui'
+import {fspc,isN} from '../../utils/fn'
 import Modal from '../../utils/modal'
 import './index.scss'
 
@@ -33,7 +34,7 @@ class Headset extends Component {
       status: STATUS_INIT,
       id: null,
       addr: null,
-      remark: null,
+      remark: '',
       bind: false,
       loading: false,
     }
@@ -49,8 +50,6 @@ class Headset extends Component {
       this.doScan()
     }else{
       this.setState({loading: true})
-      // await this.store.init() 
-      // console.log('token',this.store.getToken())
       let r = await this.store.loadHsAddr()
       let data = r.dataSource
       if (data.length>0) {
@@ -69,24 +68,35 @@ class Headset extends Component {
 
 
   doUpdateItem=async ()=>{
+    let {id,addr,remark} = this.state
+
     let params = {
-      id: this.state.id,
-      itemCode: this.state.addr,
-      remark: this.state.remark,
+      id: id,
+      itemCode: addr,
+      remark: remark,
     }
-    this.setState({loading: true})
-    let r = await this.store.addrUpdate(params)
-    this.setState({loading: false, status: STATUS_INIT})
+    if (isN(addr)) {
+      Taro.atMessage({ 'message':'请输入耳机编号!', 'type':'error' })
+    } else {
+      this.setState({loading: true})
+      let r = await this.store.addrUpdate(params)
+      this.setState({loading: false, status: STATUS_INIT})
+    }
   }
 
   doBindItem=async ()=>{
+    let {addr,remark} = this.state
     let params = {
-      itemCode: this.state.addr,
-      remark:   this.state.remark,
+      itemCode: addr,
+      remark:   remark,
     }
-    this.setState({loading: true })
-    let r = await this.store.addrBind(params)
-    this.setState({loading: false, status: STATUS_INIT, bind: true})
+    if (isN(addr)) {
+      Taro.atMessage({ 'message':'请输入耳机编号!', 'type':'error' })
+    } else {
+      this.setState({loading: true })
+      let r = await this.store.addrBind(params)
+      this.setState({loading: false, status: STATUS_INIT, bind: true})
+    }
   }
 
   doBind=()=>{
@@ -105,11 +115,15 @@ class Headset extends Component {
 
 
   doChgAddr=(e)=>{
-    this.setState({ addr: e.target.value})
+    let val = fspc(e.target.value)
+    this.setState({ addr: val })
   }
 
   doChgRemark=(e)=>{
-    this.setState({ remark: e.target.value})
+    let val = fspc(e.target.value)
+
+    console.log(val)
+    this.setState({ remark:val })
   }
 
   doEdit=()=>{
@@ -120,10 +134,15 @@ class Headset extends Component {
   
 
   render () {
-    const { e_code,status,bind,addr,remark,loading } = this.state
+    let { e_code,status,bind,addr,remark,loading } = this.state
+
+    remark = isN(remark)?'':remark.substr(0,32)
+
+    
     
     return (
       <View className="g-headset">
+        <AtMessage/>
 
         {(loading)&&<View className="g-loading"><Image src={icon_load}></Image></View>}
 
@@ -168,7 +187,7 @@ class Headset extends Component {
           
           <View className="m-row m-row-c">
             <View className="m-tl">耳机备注</View>
-            <Textarea placeholder="请输入..." value={remark} onInput={this.doChgRemark}></Textarea>
+            <Textarea placeholder="请输入..." maxlength={32} value={remark.substr(0,32)} onInput={this.doChgRemark}></Textarea>
           </View>
 
           <View className="m-help">

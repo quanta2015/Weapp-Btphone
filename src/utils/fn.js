@@ -11,10 +11,20 @@ export const delay = (delayms) =>{
 }
 
 export const fspc = (s) =>{
-  var pattern = new RegExp("[\"`~!@#$^&*()=|{}':;',\\[\\].<>/?~！@#￥……&*（）——|{}【】‘；：”“'。，、？%]") 
-  var rs = ""; 
-  for (var i = 0; i < s.length; i++) { 
-      rs = rs+s.substr(i, 1).replace(pattern, ''); 
-  } 
-  return rs; 
+  // var pattern = new RegExp("\/[\"`+~!@#$^&*()=|{}':;',\\[\\].<>/?~！@#￥……&*（）——|{}【】‘；：”“'。，、？%]") 
+  // var rs = ""; 
+  // for (var i = 0; i < s.length; i++) { 
+  //     rs = rs+s.substr(i, 1).replace(pattern, ''); 
+  // } 
+  // return rs; 
+
+  var ret = s.replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '');
+
+  return ret
+}
+
+
+export const isN=(e)=>{
+  
+  return  ((e===null)||(e==='')||(e===undefined))?true:false
 }

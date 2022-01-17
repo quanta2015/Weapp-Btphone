@@ -1,6 +1,7 @@
 import React from 'react';
+import { View, Text, Button } from '@tarojs/components'
+import {fspc, isN} from '../utils/fn'
 
-import { View, Text } from '@tarojs/components'
 
 class Modal extends React.Component {
     constructor(props) {
@@ -8,55 +9,65 @@ class Modal extends React.Component {
 
         let {isOpened} = props
         
-        // this.handleClose = (event) => {
-        //     if (typeof this.props.onClose === 'function') {
-        //         this.props.onClose(event);
-        //     }
-        // };
-        // this.handleCancel = (event) => {
-        //     if (typeof this.props.onCancel === 'function') {
-        //         this.props.onCancel(event);
-        //     }
-        // };
-        this.handleConfirm = (event) => {
-            if (typeof this.props.onConfirm === 'function') {
-                this.props.onConfirm(event);
-            }
+        this.handleCancel = (event) => {
+          if (typeof this.props.onCancel === 'function') {
+            this.props.onCancel(event);
+          }
         };
-        // this.handleTouchMove = (e) => {
-        //     e.stopPropagation();
-        // };
-
-
+        this.handleConfirm = (event) => {
+          if (typeof this.props.onConfirm === 'function') {
+            this.props.onConfirm(event);
+          }
+        };
+        this.handlePhone = (event) => {
+          if (typeof this.props.onPhone === 'function') {
+            this.props.onPhone(event);
+          }
+        };
         this.state = {
-            isOpened: isOpened
+          isOpened: isOpened
         };
     }
 
     UNSAFE_componentWillReceiveProps(nextProps) {
-        const { isOpened } = nextProps;
-        if (isOpened !== this.state.isOpened) {
-            this.setState({ isOpened: isOpened });
-        }
+      const { isOpened } = nextProps;
+      if (isOpened !== this.state.isOpened) {
+        this.setState({ isOpened: isOpened });
+      }
     }
     
     render() {
-        const { isOpened } = this.state;
-        const { title, content, cancelText, confirmText } = this.props;
+      const { isOpened } = this.state;
+      const { title, content, cancelText, confirmText, phoneText } = this.props;
+     
 
+      return (
+        <View className={(isOpened)?"g-modal act":"g-modal"}>
+          <View className="m-wrap">
+            <View className="m-title">{title}</View>
+            <View className="m-content">{content}</View>
 
-        return (
-            <View className={(isOpened)?"g-modal act":"g-modal"}>
-                <View className="m-wrap">
-                    <View className="m-title">{title}</View>
-                    <View className="m-content">{content}</View>
-                    <View className="m-btn" onClick={this.handleConfirm}>
-                         {confirmText}
-                    </View>
-                </View>
-                
+            <View className="m-fun">
+              {(!isN(cancelText))&&
+              <View className="m-btn" onClick={this.handleCancel}>
+                   {cancelText}
+              </View>}
+
+              {(!isN(confirmText))&&
+              <View className="m-btn" onClick={this.handleConfirm}>
+                 {confirmText}
+              </View>}
+
+              {(!isN(phoneText))&&
+              <Button className="m-btn" openType="getPhoneNumber" onGetPhoneNumber={this.handlePhone}>
+                   {phoneText}
+              </Button>}
             </View>
-        )
+            
+          </View>
+            
+        </View>
+      )
         
     }
 }

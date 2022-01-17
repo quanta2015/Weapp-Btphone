@@ -56,27 +56,29 @@ class SwitchRole extends Component {
     return (
       <View className="g-switch">
         <View className="m-warp">
-          <View className="m-title">请选择您的身份</View>
-          <View className="m-item f-blue">我是教师</View>
 
+          {(userlist.emp.length>0)&&
+          <View className="m-title">请选择您的身份</View>}
+          <View className="m-item f-blue">我是教师</View>
           {userlist.emp.map((item,i)=>
             <View className="m-item" onClick={this.doSelRole.bind(this,0,i)}>
               <View className="m-lt">
-                <View className="m-name">{item.orgName}</View>
-                <View className="m-id">{item.orgId}</View>
+                <View className="m-name">{item.userName}</View>
+                <View className="m-id">{item.orgName}</View>
               </View>
               <View className="m-rt">
                 <Radio value='选中' color={'#508CFF'} checked={(empId==i)?true:false} ></Radio>
               </View>
-            </View>
-          )}
+            </View>)}
           
-          <View className="m-item f-blue">我是安装师傅</View>
+          
+          {(userlist.out.length>0)&&
+          <View className="m-item f-blue">我是安装师傅</View>}
           {userlist.out.map((item,i)=>
           <View className="m-item"  onClick={this.doSelRole.bind(this,1,i)}>
             <View className="m-lt">
-              <View className="m-name">{item.orgName}</View>
-              <View className="m-id">{item.orgId}</View>
+              <View className="m-name">{item.userName}</View>
+              <View className="m-id">{item.orgName}</View>
             </View>
             <View className="m-rt">
               <Radio value='选中' color={'#508CFF'} checked={(outId==i)?true:false}></Radio>

@@ -15,12 +15,30 @@ import icon_headset from '../../static/icon_headset.svg'
 @observer
 class User extends Component {
 
+  constructor(props) {
+    super(props)
+    this.store = this.props.store.mainStore
+    this.state = {
+      userName: null
+    }
+  }
+
   doGotoHeadset=()=>{
     Taro.navigateTo({ url: `/pages/headset/index` })
   }
 
 
+
+  async componentDidShow () {     
+    let userName = this.store.getCurUser().userName
+    this.setState({userName: userName})
+    console.log('userName',userName)
+  }
+
+
   render () {
+
+    let {userName} = this.state 
 
     return (
       <View className="g-user">
@@ -29,7 +47,7 @@ class User extends Component {
         </View>
         <View className="m-user">
           <Image src={icon_user2}> </Image>
-          <Text> 旺旺旺</Text>
+          <Text>{userName}</Text>
         </View>
 
         <View className="m-sect">

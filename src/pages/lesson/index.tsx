@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 import Taro,{ getCurrentInstance } from '@tarojs/taro'
 import { AtMessage, AtActivityIndicator } from "taro-ui";
 import {openBle,bleCommand} from '../../utils/bt'
-import {fspc} from '../../utils/fn'
+import {isN,fspc} from '../../utils/fn'
 import Modal  from '../../utils/modal'
 import SwitchRole from '../../component/switchrole' 
 import './index.scss'
@@ -38,7 +38,7 @@ const ST_BLE_SUCC  = 2
 const ST_BLE_FAIL  = 3
 const ST_BLE_REST  = 4
 const ST_BLE_FINN  = 5
-
+const ST_BLE_REFA  = 6
 
 const MSG_CONN_INIT = '确定要连接，开始上课吗？'
 const MSG_CONN_ING  = '设备连接中......'
@@ -46,7 +46,7 @@ const MSG_CONN_SUCC = '设备连接成功！'
 const MSG_CONN_FAIL = '设备异常，请重启设备恢复或关闭电源重启恢复'
 const MSG_CONN_REST = '设备重启中......'
 const MSG_CONN_FINN = '设备重启成功'
-
+const MSG_CONN_REFA = '设备重启失败'
 
 var _TIME
 
@@ -76,45 +76,88 @@ class Lesson extends Component {
       st_conn: 0,
       count: 5,
       connInfo: '',
+      selClsName: null,
     }
   }
 
+  // 初始化变量
+  initVar =()=> {
+    this.setState({
+      bind:     false,
+      loading:  false,
+      showConn: false,
+      showModal:  false,
+      showSearch: false,
+      showSwitch: false,
+      showConfirm:  false,
+      showBleconf:  false,
+      finishSearch: false,
+      status: STATUS_INIT,
+      hisList: [],
+      retList: [],
+      macAddr: null,
+      showActivity: false ,
+      pageNo: 1,
+      st_conn: 0,
+      count: 5,
+      connInfo: '',
+      selClsName: null,
+    })
+  }
 
-  
-
+  // 初始化数据
   initData = async()=>{
-    this.setState({loading: true })
+    this.initVar()
+    let userName = this.store.getCurUser().userName
+    this.setState({loading: true, userName:userName })
     let s = await this.store.listResHis()
     let r = await this.store.loadHsAddr()
     let data = r.dataSource
     if (data.length>0) {
+      console.log('bind')
       this.setState({ hisList: s.dataSource, bind: true, macAddr:data[0].itemCode, loading: false, showActivity: false })
     }else{
       this.setState({loading: false })
     }
   }
 
+
+  initScan = async() => {
+    let scanRid = this.store.getScanRid()
+    let scanTo  = this.store.getScanRid()
+    console.log('scanRid',scanRid)
+    if (!isN(scanTo)) {
+      this.doShowConn({id:scanRid})
+    }
+  } 
+
+  // 页面销毁
   componentWillUnmount () {     
     clearTimeout(_TIME)
   }
 
+  // 页面显示
   async componentDidShow() {
-    this.initData()
+    await this.initData()
+    await this.initScan()
   }
 
 
   // 显示连接板卡对话框
-  doShowConn = async(id) =>{
+  doShowConn = async(e) =>{
     if (this.state.bind) { 
-      let params = { resourceId:id }
+      let params = { resourceId:e.id }
       this.setState({loading: true })
       let r = await this.store.loadResAddr(params)
       let f = r.formValue
+
+      console.log(r)
 
       if (f.equipmentList.length===0) {
         Taro.atMessage({ 'message': '尚未绑定板卡','type': 'error' })
         this.setState({ loading: false })
       }else{
+        let resourceName = f.resourceName
         let addrCard = f.equipmentList[0].code
         let addrHdst = f.itemCode
         let command  = bleCommand(addrHdst,addrCard)
@@ -131,6 +174,7 @@ class Lesson extends Component {
           loading: false, 
           showConn: true, 
           connInfo:MSG_CONN_INIT, 
+          selClsName: resourceName,
           cmd:command, 
           info:info 
         })
@@ -146,13 +190,13 @@ class Lesson extends Component {
     _TIME = setInterval(() => { 
       switch(this.state.st_conn) {
         case ST_BLE_SUCC:
-          this.setState({ connInfo: MSG_CONN_SUCC })
           clearTimeout(_TIME);
           break;
         case ST_BLE_CONN:
           if (this.state.count>0) {
             this.setState({ count:(this.state.count-1)})
           }else{
+            clearTimeout(_TIME);
             this.setState({ st_conn: ST_BLE_FAIL,connInfo: MSG_CONN_FAIL })
           };
           break;
@@ -168,7 +212,7 @@ class Lesson extends Component {
             this.setState({ count:(this.state.count-1)})
           }else{
             clearTimeout(_TIME);
-            this.setState({ st_conn:ST_BLE_FINN, connInfo: MSG_CONN_FINN })
+            this.setState({ st_conn:ST_BLE_REFA, connInfo: MSG_CONN_REFA })
           };
           break;
       }
@@ -176,11 +220,19 @@ class Lesson extends Component {
   }
 
   // 连接完成写日志
-  dolog = async()=>{
+  dolog = async(e)=>{
     let {info} = this.state
-    this.setState({ st_conn: ST_BLE_SUCC })
+
+    switch(e) {
+      case 0: 
+        this.setState({ st_conn: ST_BLE_SUCC,connInfo: MSG_CONN_SUCC })
+        break;
+      case 1:
+        this.setState({ st_conn:ST_BLE_FINN, connInfo: MSG_CONN_FINN })
+        break;
+    }
+
     let s = await this.store.saveConnInfo(info)
-    console.log(s)
     Taro.atMessage({ 'message':'保存连接信息成功', 'type':'success' })
   }
 
@@ -194,70 +246,93 @@ class Lesson extends Component {
   // 重置蓝牙板卡
   doResetCard=()=>{
     this.setState({ st_conn:ST_BLE_REST, connInfo: MSG_CONN_REST })
-    this.doCounter(3)
+    this.doCounter(10)
     openBle(CMD_RSET_CARD, null, this.dolog)
   }
 
-
+  // 关闭 modal 对话框
   doCancel = ()=>{
     this.setState({showConn: false, st_conn: ST_BLE_INIT})
   }
 
+  // 扫码二维码
   doScan = ()=>{
     wx.scanCode({
       success(res) {
-        let info = JSON.stringify(res.result)
+        let url = JSON.stringify(res.result)
+
+
+        params = url.split("?")[1]
+        let list = params.split("=")[1]
+        
+
+        console.log(list)
       }
     })
   }
 
+  // 显示查询窗口
   doShowSearch = ()=>{
     this.setState({status: STATUS_SEAR})
   }
 
+  // 关闭查询窗口
   doHideSearch = ()=>{
     this.setState({status: STATUS_INIT, retList:[], pageNo: 1})
   }
 
+  // 查询资源
   doSearch = async(e)=>{
     let keyword = fspc(e.detail.value)
-    let params = { keyword:keyword }
 
-    this.setState({loading: true, finishSearch:true })
+    if (isN(keyword)) {
+      Taro.atMessage({ 'message':' 请输入搜索关键字', 'type':'error' })
+      return
+    }
+
+    let orgId = this.store.getCurUser().orgId
+    let params = { keyword:keyword,orgId:orgId, pageNo: 1, pageSize:20 }
+    this.setState({loading: true, finishSearch:true, keyword:keyword })
     let r = await this.store.listRes(params)
-    let page = parseInt(r.pagination.total/r.pagination.pageSize)+1
-    this.setState({retList: r.dataSource, loading: false, page: page})
+    let total = r.pagination.total
+    let page = parseInt(total/r.pagination.pageSize)+1
+    this.setState({retList: r.dataSource, loading: false, page: page, total:total})
+
+    console.log(r)
   }
 
+  // 绑定耳机资源
   doBind = ()=>{
     this.setState({showModal: false})
-    Taro.navigateTo({ url: `/pages/headset/index?status=bind` })
+    Taro.navigateTo({ url: `/pages/headset/index` })
+    // Taro.navigateTo({ url: `/pages/headset/index?status=bind` })
   }
 
+  // 跳转用户中心
   doGotoUser = ()=>{
     Taro.navigateTo({ url: `/pages/user/index` })
   }
 
-
+  // 翻页查询
   onReachBottom = async() => {
-    let {pageNo, retList, page} = this.state
-
-    if (pageNo+1 < page) {
+    let {pageNo, retList, page, keyword} = this.state
+    if (pageNo+1 <= page) {
       this.setState({ showActivity: true })
-      let params = { keyword:'', pageSize:4, pageNo: pageNo+1 }
+      let orgId = this.store.getCurUser().orgId
+      let params = { keyword:keyword, orgId:orgId, pageNo: pageNo+1 , pageSize:20 }
       let r = await this.store.listRes(params)
       retList.push(...r.dataSource)
       this.setState({retList: retList, pageNo: pageNo+1,showActivity: false })
     }
   }
 
-
+  // 显示角色选择
   doSwitch = ()=>{
     let u = this.store.getUser()
     this.setState({showSwitch: true,userlist: u })
   }
 
-
+  // 切换角色
   doSelRole=async(role,params)=>{
     this.setState({showSwitch: false, loading:true})
     await this.store.switch(params)
@@ -268,7 +343,7 @@ class Lesson extends Component {
   }
 
   render () {
-    const {userlist,showBleconf,showSwitch, showSearch,showConfirm,showConn,status,hisList,retList,loading } = this.state
+    const {userlist,userName, showBleconf,showSwitch, showSearch,showConfirm,showConn,status,hisList,retList,loading, total } = this.state
     const focus = (this.state.finishSearch)?false:true
 
     return (
@@ -285,7 +360,7 @@ class Lesson extends Component {
         {((status===STATUS_INIT)||(status===STATUS_SEAR))&&
         <View className="m-hd">
           <View className="m-tl" onClick={this.doSwitch}>
-            <View>张三</View>
+            <View>{userName}</View>
             <Image className="f-icon-s" src={icon_switch}></Image>
           </View>
           <Image className="f-icon-s m-icon-user" src={icon_user} onClick={this.doGotoUser}></Image>
@@ -316,13 +391,13 @@ class Lesson extends Component {
           {(hisList.length>0)&&
           <View className="m-wrap">
             {hisList.map((item,i)=>
-              <View className="f-res" onClick={this.doShowConn.bind(this,item.id)}>
+              <View className="f-res" onClick={this.doShowConn.bind(this,item)}>
                 <View className="f-hd">
                   <Image className="f-icon" src={icon_house}></Image>
                 </View>
                 <View className="f-bd">
-                  <View className="f-bud">{item.deptName}</View>
-                  <View className="f-cls">{item.resourceName}</View>
+                  {/*<View className="f-bud">{item.deptName}</View>*/}
+                  <View className="f-bud">{item.resourceName}</View>
                 </View>
                 <View className="f-ft">
                   <Image className="f-icon-s" src={icon_microg}></Image>
@@ -357,32 +432,18 @@ class Lesson extends Component {
 
           {(retList.length!==0)&&
           <View className="m-count">
-             搜索到 <Text>{retList.length}</Text> 条相关内容
+             搜索到 <Text>{total}</Text> 条相关内容
           </View>}
           {(retList.length!==0)&&
           <View className="m-wrap">
             {retList.map((item,i)=>
-              <View className="f-res" onClick={this.doShowConn.bind(this,item.id)}>
+              <View className="f-res" onClick={this.doShowConn.bind(this,item)}>
                 <View className="f-hd">
                   <Image className="f-icon" src={icon_house}></Image>
                 </View>
                 <View className="f-bd">
-                  <View className="f-bud">{item.deptName}</View>
-                  <View className="f-cls">{item.resourceName}</View>
-                </View>
-                <View className="f-ft">
-                  <Image className="f-icon-s" src={icon_microg}></Image>
-                </View>
-              </View>
-            )}
-            {retList.map((item,i)=>
-              <View className="f-res" onClick={this.doShowConn.bind(this,item.id)}>
-                <View className="f-hd">
-                  <Image className="f-icon" src={icon_house}></Image>
-                </View>
-                <View className="f-bd">
-                  <View className="f-bud">{item.deptName}</View>
-                  <View className="f-cls">{item.resourceName}</View>
+                  {/*<View className="f-bud">{item.deptName}</View>*/}
+                  <View className="f-bud">{item.resourceName}</View>
                 </View>
                 <View className="f-ft">
                   <Image className="f-icon-s" src={icon_microg}></Image>
@@ -413,7 +474,7 @@ class Lesson extends Component {
         <View className="g-conn">
           <View className="m-wrap">
             <View className="m-hd">
-              {((this.state.st_conn == ST_BLE_INIT)||(this.state.st_conn == ST_BLE_SUCC)||(this.state.st_conn == ST_BLE_FAIL)||(this.state.st_conn===ST_BLE_FINN))&&
+              {((this.state.st_conn == ST_BLE_INIT)||(this.state.st_conn == ST_BLE_SUCC)||(this.state.st_conn == ST_BLE_FAIL)||(this.state.st_conn===ST_BLE_FINN)||(this.state.st_conn===ST_BLE_REFA))&&
               <Image src={img_lesson} mode="widthFix"> </Image>}
 
               {((this.state.st_conn == ST_BLE_CONN)||(this.state.st_conn == ST_BLE_REST))&&
@@ -421,7 +482,7 @@ class Lesson extends Component {
             </View>
             
             <View className="m-info">
-              <View className="m-cls f-blue">广知楼 A-101</View>
+              <View className="m-cls f-blue">{this.state.selClsName}</View>
               <View className="m-cls">{this.state.connInfo}</View>
             </View>
 
@@ -431,7 +492,7 @@ class Lesson extends Component {
               <View className="m-btn f-blue" onClick={this.doConnBleCard}>确定</View>
             </View>}
 
-            {((this.state.st_conn===ST_BLE_SUCC)||(this.state.st_conn===ST_BLE_FINN))&&
+            {((this.state.st_conn===ST_BLE_SUCC)||(this.state.st_conn===ST_BLE_FINN)||(this.state.st_conn===ST_BLE_REFA))&&
             <View className="m-fun">
               <View className="m-btn f-blue" onClick={this.doCancel}>确定</View>
             </View>}

@@ -37,7 +37,7 @@ export const openBle = (m, cmd, cb)=> {
       if (res.errCode !== 10001) {
         return
       }else{
-        Taro.showToast({ title: '请打开或授权蓝牙设备'})
+        Taro.showToast({ title: '请打开蓝牙设备'})
       }
     }
   })
@@ -111,7 +111,7 @@ const sendAddr = (item,deviceId,serviceId,cmd,cb) => {
       console.log(`写入特征值成功: ${cmd}`)
       Taro.showToast({ title: `板卡连接成功`})
       closeBLE()
-      cb()
+      cb(0)
     }
   })
 }
@@ -129,7 +129,7 @@ const resetCard = (item,deviceId,serviceId,cb) => {
       console.log(`写入特征值成功: ${MSG_RESET}`)
       Taro.showToast({ title: `板卡重启成功`})
       closeBLE()
-      cb()
+      cb(1)
     }
   })
 }
