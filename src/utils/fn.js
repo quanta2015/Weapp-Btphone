@@ -18,13 +18,24 @@ export const fspc = (s) =>{
   // } 
   // return rs; 
 
-  var ret = s.replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '');
+  var ret = s.replace(/[`~!@#$%^&*()_|+\=?;:'",.<>\{\}\[\]\\\/]/gi, '');
 
   return ret
 }
 
 
 export const isN=(e)=>{
-  
   return  ((e===null)||(e==='')||(e===undefined))?true:false
 }
+
+
+export const urlParams = function (url) {
+  var params = {};
+  (url + '?').split('?')[1].split('&').forEach(function (pair) {
+    pair = (pair + '=').split('=').map(decodeURIComponent);
+    if (pair[0].length) {
+      params[pair[0]] = pair[1];
+    }
+  });
+  return params;
+};

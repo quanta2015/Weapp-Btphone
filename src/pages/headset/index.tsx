@@ -95,7 +95,7 @@ class Headset extends Component {
     } else {
       this.setState({loading: true })
       let r = await this.store.addrBind(params)
-      this.setState({loading: false, status: STATUS_INIT, bind: true})
+      this.setState({loading: false, status: STATUS_INIT, bind: true, id:r.id})
     }
   }
 

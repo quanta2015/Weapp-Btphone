@@ -8,31 +8,32 @@ import * as urls from '../constant/apis'
 // const mobile    = '18969940931'
 const appid     = 'wx92eeddb23714a9c4'
 
-const APP_SERVER         = 'https://gateway.community-sit.easyj.top/'
-// const API_SERVER         = 'https://gateway.community-dev.easyj.top/user-center/'
-const API_SERVER         = 'https://gateway.community-sit.easyj.top/user-center/'
+// const APP_SERVER         = 'https://gateway.community-sit.easyj.top/'
+// const API_SERVER         = 'https://gateway.community-sit.easyj.top/user-center/'
 
 
+const APP_SERVER         = 'https://gateway.suosihulian.com/'
+const API_SERVER         = 'https://gateway.suosihulian.com/user-center/'
 
 
-const URL_PARAMS         = 'auth/oauth/token?client_id=sit&client_secret=sit&grant_type=password&from=wx_app&'
+const URL_PARAMS         = 'auth/oauth/token?client_id=prod&client_secret=prod&grant_type=password&from=wx_app&'
 const URL_LIST_RES_HIS   = API_SERVER + '/mobile/assets/employee/findList'
 const URL_FIND_RES       = API_SERVER + '/mobile/assets/employee/findPageList'
-const URL_LOAD_USER_ADDR = API_SERVER + '/mobile/assets/employee/assetsDetail'
-const URL_ADDR_UPDATE    = API_SERVER + '/mobile/assets/employee/updateOne'
-const URL_ADDR_BIND      = API_SERVER + '/mobile/assets/employee/saveOne'
-const URL_LOAD_RES_ADDR  = API_SERVER + '/mobile/assets/employee/detail'
-const URL_SAVE_CONN_INFO = API_SERVER + '/mobile/assets/employee/saveConnectInfo'
+const URL_LOAD_USER_ADDR = API_SERVER + '/mobile/assets/personal/assetsDetail'
+const URL_ADDR_UPDATE    = API_SERVER + '/mobile/assets/personal/updateOne'
+const URL_ADDR_BIND      = API_SERVER + '/mobile/assets/personal/saveOne'
+const URL_LOAD_RES_ADDR  = API_SERVER + '/mobile/assets/personal/detail'
+const URL_SAVE_CONN_INFO = API_SERVER + '/mobile/assets/personal/saveConnectInfo'
 
-const URL_LIST_ORG_HIS   = API_SERVER + '/mobile/assets/outsider/findList'
-const URL_LIST_ORG       = API_SERVER + '/mobile/assets/outsider/searchPageList'
-const URL_LIST_CLS       = API_SERVER + '/mobile/assets/outsider/resource/searchPageList'
-const URL_LIST_EQU       = API_SERVER + '/mobile/assets/outsider/getEquipmentList'
-const URL_EQU_BIND       = API_SERVER + '/mobile/assets/outsider/saveEquipment'
-const URL_EQU_UPDATE     = API_SERVER + '/mobile/assets/outsider/updateEquipment'
+// const URL_LIST_ORG_HIS   = API_SERVER + '/mobile/assets/outsider/findList'
+// const URL_LIST_ORG       = API_SERVER + '/mobile/assets/outsider/searchPageList'
+// const URL_LIST_CLS       = API_SERVER + '/mobile/assets/outsider/resource/searchPageList'
+// const URL_LIST_EQU       = API_SERVER + '/mobile/assets/outsider/getEquipmentList'
+// const URL_EQU_BIND       = API_SERVER + '/mobile/assets/outsider/saveEquipment'
+// const URL_EQU_UPDATE     = API_SERVER + '/mobile/assets/outsider/updateEquipment'
 
 
-const URL_GET_PHONE      = `${APP_SERVER}/external-service/feign/wechat/mini/user/phoneNumber`
+const URL_GET_PHONE      = `${APP_SERVER}external-service/feign/wechat/mini/user/phoneNumber`
 const URL_SWITCH_USER    = APP_SERVER + 'user-center/switch/school'
 
 const jstoken=(e,mobile) =>{ return `${APP_SERVER}${URL_PARAMS}appId=${appid}&mobile=${mobile}&code=${e}` }
@@ -42,10 +43,10 @@ const aptoken=(i,j,k) =>{ return `${APP_SERVER}${URL_PARAMS}orgId=${i}&userId=${
 const empty = {dataSource:[]}
 const check = (r,c)=>{
   if (r.data.code===0) {
-    console.log(r)
+    // console.log(r)
     return r.data.data
   }else{
-    Taro.atMessage({ "message": `${r.data.msg}`, "type": "error" })
+    Taro.atMessage({ "message": `${r.data.msg} ${c}`, "type": "error" })
     return empty
   }
 }
@@ -53,7 +54,7 @@ const checkP = (r,c)=>{
   if (r.data.code===0) {
     return r.data
   }else{
-    Taro.atMessage({ "message": `${r.data.msg}`, "type": "error" })
+    Taro.atMessage({ "message": `${r.data.msg}  ${c}`, "type": "error" })
     return empty
   }
 }
@@ -61,10 +62,10 @@ const checkP = (r,c)=>{
 class mainStore {
 
   token = null;
-  userList = [];
   scanRid = null;
   scanOid = null;
   scanTo  = null;
+  userList = { emp:[], out:[], role: null } ;
   role  = { emp: {sel: true, id: 0}, out: { sel:false , id: 0} }
 
   getToken = ( ) =>{ return this.token }
@@ -72,16 +73,28 @@ class mainStore {
   getRole  = ( ) =>{ return this.role }
   setRole  = (r) =>{ this.role = r}
   setScanRid= (r) =>{ this.scanRid = r }
-  getScanRid= (r) =>{ return this.scanRid }
+  getScanRid= ( ) =>{ return this.scanRid }
   setScanOid= (r) =>{ this.scanOid = r }
-  getScanOid= (r) =>{ return this.scanOid }
+  getScanOid= ( ) =>{ return this.scanOid }
   setScanTo = (r) =>{ this.scanTo = r }
-  getScanTo = (r) =>{ return this.scanTo }
+  getScanTo = ( ) =>{ return this.scanTo }
+
+
+
+  getUserByOrgId = (orgId) =>{
+    let usr 
+    this.userList.emp.map((item,i)=>{
+      if (item.orgId === parseInt(orgId)) {
+        usr = item
+        this.role = { emp: {sel: true, id: i}, out: { sel:false , id: 0} };
+        console.log(item)
+      }
+    })
+    return usr
+  }
 
 
   getCurUser = () =>{
-    if (this.userList.length === 0 ) return null
-
     if (this.role.emp.sel) {
       let id = this.role.emp.id
       return this.userList.emp[id]
@@ -120,71 +133,32 @@ class mainStore {
   init = async(mobile) => {
     let code   = await this.weLogin()
     let ret    = await req.get(jstoken(code,mobile))
+    if (ret.data.code!==0) {
+      Taro.atMessage({ 'message':ret.data.msg, 'type':'error' })
+      return null
+    }
+
     this.token = this.initToken(ret.data.data)
     let r = await req.get(URL_SWITCH_USER,'',this.token)
     let list = check(r,100)
     console.log(list)
 
     let u = { emp:[], out:[], role: null }
-
     list.map((item,i)=>{
       switch(item.userType) {
-        case 'employee': u.emp.push(item);break;
-        case 'outsider': u.out.push(item);break;
+        case 'employee': this.userList.emp.push(item);break;
+        // case 'outsider': u.out.push(item);break;
       }
     })
 
-    if ((u.emp.length>0)&&(u.out.length>0)&&(this.scanTo==='out')) {
-      u.role = 'out'
-      this.role.out.sel = true
-      this.role.emp.sel = false
-    }else if ((u.emp.length>0)&&(u.out.length>0)&&(this.scanTo==='emp')) {
-      u.role = 'emp'
-    }else if ((u.emp.length>0)&&(u.out.length>0)&&(this.scanTo===null)) {
-      u.role = 'emp'
-    }else if ((u.emp.length>0)&&(u.out.length==0)&&(this.scanTo==='emp')) {
-      u.role = 'emp'
-    }else if ((u.emp.length>0)&&(u.out.length==0)&&(this.scanTo===null)) {
-      u.role = 'emp'
-    }else if ((u.emp.length>0)&&(u.out.length==0)&&(this.scanTo==='out')) {
-      u.role = 'error'
-    }else if ((u.emp.length==0)&&(u.out.length>0)&&(this.scanTo==='emp')) {
-      u.role = 'error'
-    }else if ((u.emp.length==0)&&(u.out.length>0)&&(this.scanTo==='out')) {
-      u.role = 'out'
-      this.role.out.sel = true
-      this.role.emp.sel = false
-    }else if ((u.emp.length==0)&&(u.out.length>0)&&(this.scanTo===null)) {
-      u.role = 'out'
-      this.role.out.sel = true
-      this.role.emp.sel = false
-    }
-
-
-    // if ((u.role =='both')&&(this.scanTo=='out')) {
-    //   this.role.out.sel = true
-    //   this.role.emp.sel = false
-    // }else if ((u.role =='emp')&&(this.scanTo=='out')) {
-    //   u.role = 'error'
-    // }else if((u.role =='out')&&(this.scanTo=='out')) {
-    //   this.role.out.sel = true
-    //   this.role.emp.sel = false
-    // }else if((u.role =='out')&&(this.scanTo=='emp')) {
-    //   u.role = 'error'
-    // }
-
-    // console.log(this.role)
-
-
-    this.userList = u
-    return this.userList
+    return this.userList.emp[0]
   }
 
   switch = async(e) => {
     let url = aptoken(e.orgId,e.userId,e.userType)
     let r = await req.get(url)
     this.token = this.initToken(r.data.data)
-    // console.log(this.token)
+    console.log(this.token)
   }
 
 
@@ -251,6 +225,7 @@ class mainStore {
 
   listEqu = async (params) => {
     let r = await req.get(URL_LIST_EQU,params,this.token)
+    console.log(r)
     return check(r,204)
   }
 

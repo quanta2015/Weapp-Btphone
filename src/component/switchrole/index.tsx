@@ -2,7 +2,7 @@ import { Component } from 'react'
 import { View,  Radio } from '@tarojs/components'
 import { observer, inject } from 'mobx-react'
 import './index.scss'
-
+import Taro from '@tarojs/taro'
 import icon_switch  from '../../static/icon_switch.svg'
 
 
@@ -46,6 +46,13 @@ class SwitchRole extends Component {
     this.props.onSwitch(role,params);
   }
 
+  doHandleTouch=(e)=>{
+    
+
+    e.preventDefault()
+    e.stopPropagation()
+    console.log(e)
+  }
   
 
   render () {
@@ -54,7 +61,7 @@ class SwitchRole extends Component {
     let outId = (selRole.out.sel)?selRole.out.id:-1
 
     return (
-      <View className="g-switch">
+      <View className="g-switch" onTouchMove={this.doHandleTouch} catchMove={true}>
         <View className="m-warp">
 
           {(userlist.emp.length>0)&&

@@ -4,9 +4,9 @@ export default {
     'pages/index/index',
     'pages/lesson/index',
     'pages/headset/index',
-    'pages/config/index',
     'pages/user/index',
-    'pages/demo/index',
+    'pages/blank/index',
+    // 'pages/demo/index',
     
   ],
   window: {
@@ -18,11 +18,11 @@ export default {
   tabBar: {
     "borderStyle":"white",
     list: [{
+      pagePath: 'pages/index/index',
+    },{
       pagePath: 'pages/lesson/index',
     },{
-      pagePath: 'pages/config/index',
-    },{
-      pagePath: 'pages/index/index',
+      pagePath: 'pages/blank/index',
     }]
   }
 }

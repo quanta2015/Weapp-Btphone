@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 import Taro,{ getCurrentInstance } from '@tarojs/taro'
 import { AtMessage, AtActivityIndicator } from "taro-ui";
 import {openBle,bleCommand} from '../../utils/bt'
-import {isN,fspc} from '../../utils/fn'
+import {isN,fspc,urlParams} from '../../utils/fn'
 import Modal  from '../../utils/modal'
 import SwitchRole from '../../component/switchrole' 
 import './index.scss'
@@ -114,7 +114,6 @@ class Lesson extends Component {
     let r = await this.store.loadHsAddr()
     let data = r.dataSource
     if (data.length>0) {
-      console.log('bind')
       this.setState({ hisList: s.dataSource, bind: true, macAddr:data[0].itemCode, loading: false, showActivity: false })
     }else{
       this.setState({loading: false })
@@ -124,10 +123,16 @@ class Lesson extends Component {
 
   initScan = async() => {
     let scanRid = this.store.getScanRid()
-    let scanTo  = this.store.getScanRid()
+    let scanOid = this.store.getScanOid()
+    let scanTo  = this.store.getScanTo()
     console.log('scanRid',scanRid)
-    if (!isN(scanTo)) {
+    console.log('scanOid',scanOid)
+    if (!isN(scanRid)) {
+      let params = this.store.getUserByOrgId(scanOid)
+      await this.store.switch(params)
+      this.initData()
       this.doShowConn({id:scanRid})
+
     }
   } 
 
@@ -137,22 +142,30 @@ class Lesson extends Component {
   }
 
   // 页面显示
+  async componentDidMount() {
+
+    await this.initScan()
+  }
+
+
+  // 页面显示
   async componentDidShow() {
     await this.initData()
-    await this.initScan()
   }
 
 
   // 显示连接板卡对话框
   doShowConn = async(e) =>{
-    if (this.state.bind) { 
+    let r = await this.store.loadHsAddr()
+    let bind = (r.dataSource.length>0)?true:false
+    if (bind) { 
       let params = { resourceId:e.id }
+
+      console.log(params)
       this.setState({loading: true })
       let r = await this.store.loadResAddr(params)
-      let f = r.formValue
-
       console.log(r)
-
+      let f = r.formValue
       if (f.equipmentList.length===0) {
         Taro.atMessage({ 'message': '尚未绑定板卡','type': 'error' })
         this.setState({ loading: false })
@@ -257,16 +270,21 @@ class Lesson extends Component {
 
   // 扫码二维码
   doScan = ()=>{
+    let that = this
     wx.scanCode({
-      success(res) {
-        let url = JSON.stringify(res.result)
-
-
-        params = url.split("?")[1]
-        let list = params.split("=")[1]
-        
-
-        console.log(list)
+      async success(res) {
+        let url = res.result
+        let rid = urlParams(url).id
+        let oid = urlParams(url).orgId
+        if (!isN(rid)&&!isN(oid)) {
+          let params = that.store.getUserByOrgId(oid)
+          await that.store.switch(params)
+          that.initData()
+          await that.doShowConn({id:rid})
+          
+        }else{
+          Taro.atMessage({ 'message':'二维码信息错误', 'type':'error' })
+        }
       }
     })
   }
@@ -291,14 +309,12 @@ class Lesson extends Component {
     }
 
     let orgId = this.store.getCurUser().orgId
-    let params = { keyword:keyword,orgId:orgId, pageNo: 1, pageSize:20 }
-    this.setState({loading: true, finishSearch:true, keyword:keyword })
+    let params = { keyword:keyword, orgId:orgId, pageNo: 1, pageSize:20 }
+    this.setState({loading: true, finishSearch:true, keyword:keyword, pageNo:1 })
     let r = await this.store.listRes(params)
     let total = r.pagination.total
     let page = parseInt(total/r.pagination.pageSize)+1
     this.setState({retList: r.dataSource, loading: false, page: page, total:total})
-
-    console.log(r)
   }
 
   // 绑定耳机资源
@@ -311,6 +327,18 @@ class Lesson extends Component {
   // 跳转用户中心
   doGotoUser = ()=>{
     Taro.navigateTo({ url: `/pages/user/index` })
+  }
+
+
+  onPullDownRefresh =async()=>{
+    let {status, keyword } = this.state
+    if (status === STATUS_SEAR) {
+      Taro.startPullDownRefresh
+      await this.doSearch({detail: {value: keyword}})
+      Taro.stopPullDownRefresh()
+    }else{
+      Taro.stopPullDownRefresh()
+    }
   }
 
   // 翻页查询
