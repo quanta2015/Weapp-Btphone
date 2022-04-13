@@ -6,7 +6,7 @@ export default {
     'pages/headset/index',
     'pages/user/index',
     'pages/blank/index',
-    // 'pages/demo/index',
+    // 'pages/openlink/index',
     
   ],
   window: {

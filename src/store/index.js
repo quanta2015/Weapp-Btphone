@@ -5,18 +5,20 @@ import req from '../utils/request'
 import * as urls from '../constant/apis'
 
 
-// const mobile    = '18969940931'
-const appid     = 'wx92eeddb23714a9c4'
+// 亮嗓测试
+const appid = 'wx92eeddb23714a9c4'
+const ed    = 'sit'
+// 亮嗓上线 
+// const appid = 'wx15e39bc4d0b65e76'
+// const ed    = 'prod'
+// 开发=dev，测试=sit，生产=prod
 
-// const APP_SERVER         = 'https://gateway.community-sit.easyj.top/'
-// const API_SERVER         = 'https://gateway.community-sit.easyj.top/user-center/'
+// const APP_SERVER         = 'https://gateway.suosihulian.com'
+// const API_SERVER         = 'https://gateway.suosihulian.com/user-center/'
+const APP_SERVER         = 'https://gateway.community-sit.easyj.top'
+const API_SERVER         = APP_SERVER + '/user-center/'
 
-
-const APP_SERVER         = 'https://gateway.suosihulian.com/'
-const API_SERVER         = 'https://gateway.suosihulian.com/user-center/'
-
-
-const URL_PARAMS         = 'auth/oauth/token?client_id=prod&client_secret=prod&grant_type=password&from=wx_app&'
+const URL_PARAMS         = `/auth/oauth/token?client_id=${ed}&client_secret=${ed}&grant_type=password&from=wx_app&`
 const URL_LIST_RES_HIS   = API_SERVER + '/mobile/assets/employee/findList'
 const URL_FIND_RES       = API_SERVER + '/mobile/assets/employee/findPageList'
 const URL_LOAD_USER_ADDR = API_SERVER + '/mobile/assets/personal/assetsDetail'
@@ -24,6 +26,7 @@ const URL_ADDR_UPDATE    = API_SERVER + '/mobile/assets/personal/updateOne'
 const URL_ADDR_BIND      = API_SERVER + '/mobile/assets/personal/saveOne'
 const URL_LOAD_RES_ADDR  = API_SERVER + '/mobile/assets/personal/detail'
 const URL_SAVE_CONN_INFO = API_SERVER + '/mobile/assets/personal/saveConnectInfo'
+
 
 // const URL_LIST_ORG_HIS   = API_SERVER + '/mobile/assets/outsider/findList'
 // const URL_LIST_ORG       = API_SERVER + '/mobile/assets/outsider/searchPageList'
@@ -33,8 +36,8 @@ const URL_SAVE_CONN_INFO = API_SERVER + '/mobile/assets/personal/saveConnectInfo
 // const URL_EQU_UPDATE     = API_SERVER + '/mobile/assets/outsider/updateEquipment'
 
 
-const URL_GET_PHONE      = `${APP_SERVER}external-service/feign/wechat/mini/user/phoneNumber`
-const URL_SWITCH_USER    = APP_SERVER + 'user-center/switch/school'
+const URL_GET_PHONE      = `${APP_SERVER}/external-service/feign/wechat/mini/user/phoneNumber`
+const URL_SWITCH_USER    = APP_SERVER + '/user-center/switch/school'
 
 const jstoken=(e,mobile) =>{ return `${APP_SERVER}${URL_PARAMS}appId=${appid}&mobile=${mobile}&code=${e}` }
 const aptoken=(i,j,k) =>{ return `${APP_SERVER}${URL_PARAMS}orgId=${i}&userId=${j}&userType=${k}` }

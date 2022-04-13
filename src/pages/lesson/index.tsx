@@ -371,8 +371,9 @@ class Lesson extends Component {
   }
 
   render () {
-    const {userlist,userName, showBleconf,showSwitch, showSearch,showConfirm,showConn,status,hisList,retList,loading, total } = this.state
+    var {userlist,userName, showBleconf,showSwitch, showSearch,showConfirm,showConn,status,hisList,retList,loading, total } = this.state
     const focus = (this.state.finishSearch)?false:true
+
 
     return (
       <View className='g-lesson'>

@@ -60,6 +60,10 @@ class SwitchRole extends Component {
     let empId = (selRole.emp.sel)?selRole.emp.id:-1
     let outId = (selRole.out.sel)?selRole.out.id:-1
 
+    // userlist.emp = [{userName: '李阳', orgName: '杭州师范大学'},{userName: '李阳', orgName: '浙大城市学院'}]
+
+
+
     return (
       <View className="g-switch" onTouchMove={this.doHandleTouch} catchMove={true}>
         <View className="m-warp">
@@ -70,8 +74,8 @@ class SwitchRole extends Component {
           {userlist.emp.map((item,i)=>
             <View className="m-item" onClick={this.doSelRole.bind(this,0,i)}>
               <View className="m-lt">
-                <View className="m-name">{item.userName}</View>
-                <View className="m-id">{item.orgName}</View>
+                <View className="m-name">{item.orgName}</View>
+                <View className="m-id">{item.userName}</View>
               </View>
               <View className="m-rt">
                 <Radio value='选中' color={'#508CFF'} checked={(empId==i)?true:false} ></Radio>
